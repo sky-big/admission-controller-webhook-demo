@@ -16,7 +16,7 @@
 
 .DEFAULT_GOAL := docker-image
 
-IMAGE ?= stackrox/admission-controller-webhook-demo:latest
+IMAGE ?= skybig/admission-controller-webhook-demo:0.0.1
 
 image/webhook-server: $(shell find . -name '*.go')
 	CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o $@ ./cmd/webhook-server
@@ -24,6 +24,7 @@ image/webhook-server: $(shell find . -name '*.go')
 .PHONY: docker-image
 docker-image: image/webhook-server
 	docker build -t $(IMAGE) image/
+	rm -rf image/webhook-server
 
 .PHONY: push-image
 push-image: docker-image
