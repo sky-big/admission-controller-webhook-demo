@@ -22,14 +22,18 @@ flag of `kube-apiserver`.
 
 For building the image, [GNU make](https://www.gnu.org/software/make/) and [Go](https://golang.org) are required.
 
-## Deploying the Webhook Server
+## Deploy
 
-1. Bring up a Kubernetes cluster satisfying the above prerequisites, and make
-sure it is active (i.e., either via the configuration in the default location, or by setting
-the `KUBECONFIG` environment variable).
-2. Run `./deploy.sh`. This will create a CA, a certificate and private key for the webhook server,
-and deploy the resources in the newly created `webhook-demo` namespace in your Kubernetes cluster.
+```
+$ make push-image
+$ make deploy
+```
 
+## UnDeploy
+
+```
+$ make undeploy
+```
 
 ## Verify
 
@@ -47,52 +51,68 @@ NAME           AGE
 demo-webhook   36m
 ```
 
-3. Deploy [a pod](examples/pod-with-defaults.yaml) that neither sets `runAsNonRoot` nor `runAsUser`:
+3. Deploy [a pod](examples/test.yaml)
 ```
-$ kubectl create -f examples/pod-with-defaults.yaml
-```
-Verify that the pod has default values in its security context filled in:
-```
-$ kubectl get pod/pod-with-defaults -o yaml
-...
-  securityContext:
-    runAsNonRoot: true
-    runAsUser: 1234
-...
-```
-Also, check the logs that the pod had in fact been running as a non-root user:
-```
-$ kubectl logs pod-with-defaults
-I am running as user 1234
+$ kubectl create -f examples/test.yaml
+$ kubectl get pods
+NAME                                                            READY   STATUS      RESTARTS   AGE
+my-test-0                                                       1/1     Running     0          3m46s
 ```
 
-4. Deploy [a pod](examples/pod-with-override.yaml) that explicitly sets `runAsNonRoot` to `false`, allowing it to run as the
-`root` user:
+4. verify pod label
 ```
-$ kubectl create -f examples/pod-with-override.yaml
-$ kubectl get pod/pod-with-override -o yaml
-...
-  securityContext:
-    runAsNonRoot: false
-...
-$ kubectl logs pod-with-override
-I am running as user 0
+$ kubectl describe pod my-test-0
+Name:           my-test-0
+Namespace:      default
+Priority:       0
+Node:           k8s-node-vmxo4g-v9nu5bkh1a/172.16.224.5
+Start Time:     Thu, 05 Mar 2020 20:12:19 +0800
+Labels:         admission.test.admission=hello-world
+                app=nginx
+                controller-revision-hash=my-test-5d85c59ddf
+                statefulset.kubernetes.io/pod-name=my-test-0
+Annotations:    <none>
+Status:         Running
+IP:             172.16.192.22
+IPs:            <none>
+Controlled By:  StatefulSet/my-test
+Containers:
+  nginx:
+    Container ID:   docker://e5350a35fcbc1f7ef6817665060eb26bf2262b79e52b530dee12cc28a742651e
+    Image:          nginx
+    Image ID:       docker-pullable://nginx@sha256:2539d4344dd18e1df02be842ffc435f8e1f699cfc55516e2cf2cb16b7a9aea0b
+    Port:           <none>
+    Host Port:      <none>
+    State:          Running
+      Started:      Thu, 05 Mar 2020 20:12:35 +0800
+    Ready:          True
+    Restart Count:  0
+    Environment:    <none>
+    Mounts:
+      /var/run/secrets/kubernetes.io/serviceaccount from default-token-2tdts (ro)
+Conditions:
+  Type              Status
+  Initialized       True
+  Ready             True
+  ContainersReady   True
+  PodScheduled      True
+Volumes:
+  default-token-2tdts:
+    Type:        Secret (a volume populated by a Secret)
+    SecretName:  default-token-2tdts
+    Optional:    false
+QoS Class:       BestEffort
+Node-Selectors:  <none>
+Tolerations:     node.kubernetes.io/not-ready:NoExecute for 300s
+                 node.kubernetes.io/unreachable:NoExecute for 300s
+Events:
+  Type    Reason     Age    From                                 Message
+  ----    ------     ----   ----                                 -------
+  Normal  Scheduled  5m13s  default-scheduler                    Successfully assigned default/my-test-0 to k8s-node-vmxo4g-v9nu5bkh1a
+  Normal  Pulling    5m12s  kubelet, k8s-node-vmxo4g-v9nu5bkh1a  Pulling image "nginx"
+  Normal  Pulled     4m57s  kubelet, k8s-node-vmxo4g-v9nu5bkh1a  Successfully pulled image "nginx"
+  Normal  Created    4m57s  kubelet, k8s-node-vmxo4g-v9nu5bkh1a  Created container nginx
+  Normal  Started    4m57s  kubelet, k8s-node-vmxo4g-v9nu5bkh1a  Started container nginx
 ```
 
-5. Attempt to deploy [a pod](examples/pod-with-conflict.yaml) that has a conflicting setting: `runAsNonRoot` set to `true`, but `runAsUser` set to false.
-The admission controller should block the creation of that pod.
-```
-$ kubectl create -f examples/pod-with-conflict.yaml 
-Error from server (InternalError): error when creating "examples/pod-with-conflict.yaml": Internal error
-occurred: admission webhook "webhook-server.webhook-demo.svc" denied the request: runAsNonRoot specified,
-but runAsUser set to 0 (the root user)
-```
-
-## Build the Image from Sources (optional)
-
-An image can be built by running `make`.
-If you want to modify the webhook server for testing purposes, be sure to set and export
-the shell environment variable `IMAGE` to an image tag for which you have push access. You can then
-build and push the image by running `make push-image`. Also make sure to change the image tag
-in `deployment/deployment.yaml.template`, and if necessary, add image pull secrets.
-
+label `admission.test.admission=hello-world` add Successfully
