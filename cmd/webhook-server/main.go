@@ -72,7 +72,7 @@ func applySecurityDefaults(req *v1beta1.AdmissionRequest) ([]patchOperation, err
 		newLabels := pod.Labels
 		newLabels[AddLabelKey] = AddLabelValue
 		patches = append(patches, patchOperation{
-			Op:    "add",
+			Op:    "replace",
 			Path:  "/labels",
 			Value: newLabels,
 		})
