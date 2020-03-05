@@ -18,12 +18,13 @@ package main
 
 import (
 	"fmt"
-	"k8s.io/api/admission/v1beta1"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"log"
 	"net/http"
 	"path/filepath"
+
+	"k8s.io/api/admission/v1beta1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -33,8 +34,8 @@ const (
 )
 
 const (
-	AddLabelKey = "admission.test.admission"
-	AddLabelValue = "hello world !!!"
+	AddLabelKey   = "admission.test.admission"
+	AddLabelValue = "hello-world"
 )
 
 var (
@@ -66,17 +67,25 @@ func applySecurityDefaults(req *v1beta1.AdmissionRequest) ([]patchOperation, err
 		return nil, fmt.Errorf("could not deserialize pod object: %v", err)
 	}
 
+	if pod.Name == "" {
+		return nil, nil
+	}
+
+	log.Printf("pod(%s) namespace(%s) start apply", pod.Name, pod.Namespace)
+
 	// Pod add label
 	var patches []patchOperation
 	if _, ok := pod.Labels[AddLabelKey]; !ok {
 		newLabels := pod.Labels
 		newLabels[AddLabelKey] = AddLabelValue
 		patches = append(patches, patchOperation{
-			Op:    "replace",
-			Path:  "/labels",
+			Op:    "add",
+			Path:  "/metadata/labels",
 			Value: newLabels,
 		})
 	}
+
+	log.Printf("pod(%s) namespace(%s) apply result : %v", pod.Name, pod.Namespace, patches)
 
 	return patches, nil
 }

@@ -16,7 +16,7 @@
 
 .DEFAULT_GOAL := docker-image
 
-IMAGE ?= skybig/admission-controller-webhook-demo:0.0.1
+IMAGE ?= core.harbor.domain/webhook/admission-controller-webhook-demo:latest
 
 image/webhook-server: $(shell find . -name '*.go')
 	CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o $@ ./cmd/webhook-server
@@ -29,3 +29,11 @@ docker-image: image/webhook-server
 .PHONY: push-image
 push-image: docker-image
 	docker push $(IMAGE)
+
+.PHONY: deploy
+deploy:
+	./deploy.sh
+
+.PHONY: undeploy
+undeploy:
+	./undeploy.sh

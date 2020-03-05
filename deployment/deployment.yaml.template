@@ -20,7 +20,7 @@ spec:
         runAsUser: 1234
       containers:
       - name: server
-        image: skybig/admission-controller-webhook-demo:0.0.1
+        image: core.harbor.domain/webhook/admission-controller-webhook-demo:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 8443
