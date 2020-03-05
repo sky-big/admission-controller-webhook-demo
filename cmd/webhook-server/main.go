@@ -17,7 +17,6 @@ limitations under the License.
 package main
 
 import (
-	"errors"
 	"fmt"
 	"k8s.io/api/admission/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -31,6 +30,11 @@ const (
 	tlsDir      = `/run/secrets/tls`
 	tlsCertFile = `tls.crt`
 	tlsKeyFile  = `tls.key`
+)
+
+const (
+	AddLabelKey = "admission.test.admission"
+	AddLabelValue = "hello world !!!"
 )
 
 var (
@@ -62,35 +66,16 @@ func applySecurityDefaults(req *v1beta1.AdmissionRequest) ([]patchOperation, err
 		return nil, fmt.Errorf("could not deserialize pod object: %v", err)
 	}
 
-	// Retrieve the `runAsNonRoot` and `runAsUser` values.
-	var runAsNonRoot *bool
-	var runAsUser *int64
-	if pod.Spec.SecurityContext != nil {
-		runAsNonRoot = pod.Spec.SecurityContext.RunAsNonRoot
-		runAsUser = pod.Spec.SecurityContext.RunAsUser
-	}
-
-	// Create patch operations to apply sensible defaults, if those options are not set explicitly.
+	// Pod add label
 	var patches []patchOperation
-	if runAsNonRoot == nil {
+	if _, ok := pod.Labels[AddLabelKey]; !ok {
+		newLabels := pod.Labels
+		newLabels[AddLabelKey] = AddLabelValue
 		patches = append(patches, patchOperation{
 			Op:    "add",
-			Path:  "/spec/securityContext/runAsNonRoot",
-			// The value must not be true if runAsUser is set to 0, as otherwise we would create a conflicting
-			// configuration ourselves.
-			Value: runAsUser == nil || *runAsUser != 0,
+			Path:  "/labels",
+			Value: newLabels,
 		})
-
-		if runAsUser == nil {
-			patches = append(patches, patchOperation{
-				Op:    "add",
-				Path:  "/spec/securityContext/runAsUser",
-				Value: 1234,
-			})
-		}
-	} else if *runAsNonRoot == true && (runAsUser != nil && *runAsUser == 0) {
-		// Make sure that the settings are not contradictory, and fail the object creation if they are.
-		return nil, errors.New("runAsNonRoot specified, but runAsUser set to 0 (the root user)")
 	}
 
 	return patches, nil
